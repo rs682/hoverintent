@@ -2,7 +2,7 @@
 
 var extend = require('xtend');
 
-module.exports = function(el, onOver, onOut) {
+module.exports = function (el, onOver, onOut) {
   var x, y, pX, pY;
   var h = {},
     state = 0,
@@ -14,33 +14,27 @@ module.exports = function(el, onOver, onOut) {
     timeout: 0
   };
 
-  function delay(el, e) {
-    if (timer) timer = clearTimeout(timer);
-    state = 0;
-    return onOut.call(el, e);
-  }
-
   function tracker(e) {
     x = e.clientX;
     y = e.clientY;
   }
 
-  function compare(el, e) {
+  function compare(el, e, callback, desiredStatus) {
     if (timer) timer = clearTimeout(timer);
     if ((Math.abs(pX - x) + Math.abs(pY - y)) < options.sensitivity) {
-      state = 1;
-      return onOver.call(el, e);
+      state = desiredStatus;
+      return callback.call(el, e);
     } else {
       pX = x;
       pY = y;
-      timer = setTimeout(function() {
-        compare(el, e);
+      timer = setTimeout(function () {
+        compare(el, e, callback, desiredStatus);
       }, options.interval);
     }
   }
 
   // Public methods
-  h.options = function(opt) {
+  h.options = function (opt) {
     options = extend({}, options, opt);
     return h;
   };
@@ -49,14 +43,14 @@ module.exports = function(el, onOver, onOut) {
     if (timer) timer = clearTimeout(timer);
     el.removeEventListener('mousemove', tracker, false);
 
-    if (state !== 1) {
+    if (state !== 'hovering' || typeof state === 'undefined') {
       pX = e.clientX;
       pY = e.clientY;
 
       el.addEventListener('mousemove', tracker, false);
 
-      timer = setTimeout(function() {
-        compare(el, e);
+      timer = setTimeout(function () {
+        compare(el, e, onOver, 'hovering');
       }, options.interval);
     }
 
@@ -65,18 +59,18 @@ module.exports = function(el, onOver, onOut) {
 
   function dispatchOut(e) {
     if (timer) timer = clearTimeout(timer);
-    el.removeEventListener('mousemove', tracker, false);
+    document.body.addEventListener('mousemove', tracker, false);
 
-    if (state === 1) {
-      timer = setTimeout(function() {
-        delay(el, e);
+    if (state === 'hovering') {
+      timer = setTimeout(function () {
+        compare(el, e, onOut, 'out');
       }, options.timeout);
     }
 
     return this;
   }
 
-  h.remove = function() {
+  h.remove = function () {
     if (!el) return;
     el.removeEventListener('mouseover', dispatchOver, false);
     el.removeEventListener('mouseout', dispatchOut, false);
